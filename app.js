@@ -44,31 +44,43 @@ async function generarHash(file) {
 window.subirEvidencia = async function() {
     if(!selectedFile) return alert("Primero captura una foto");
     
-    document.getElementById("status").innerText = "Subiendo...";
-    
-    const hash = await generarHash(selectedFile);
-    const folio = "VP-" + Date.now();
-    
-    // Subir imagen a Storage
-    const storageRef = ref(storage, 'fotos/' + folio);
-    await uploadBytes(storageRef, selectedFile);
-    const url = await getDownloadURL(storageRef);
+    document.getElementById("status").innerText = "Obteniendo ubicación y subiendo...";
 
-    // Guardar datos en Firestore
-    await addDoc(collection(db, "evidencias"), {
-        folio: folio,
-        hash: hash,
-        lat: lat,
-        lon: lon,
-        url: url,
-        fecha: serverTimestamp()
+    // Forzamos la petición de GPS justo antes de subir
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const precision = pos.coords.accuracy;
+
+        try {
+            const hash = await generarHash(selectedFile);
+            const folio = "VP-" + Date.now();
+            
+            // 1. Subir imagen a Storage
+            const storageRef = ref(storage, 'fotos/' + folio);
+            const snapshot = await uploadBytes(storageRef, selectedFile);
+            const url = await getDownloadURL(snapshot.ref);
+
+            // 2. Guardar datos en Firestore
+            await addDoc(collection(db, "evidencias"), {
+                folio: folio,
+                hash: hash,
+                lat: lat,
+                lon: lon,
+                precision: precision,
+                url: url,
+                fecha: serverTimestamp()
+            });
+
+            document.getElementById("status").innerText = "¡Éxito! Folio: " + folio;
+            alert("Evidencia guardada con éxito. Folio: " + folio);
+            
+        } catch (error) {
+            console.error(error);
+            document.getElementById("status").innerText = "Error al subir. Revisa tu conexión.";
+        }
+    }, (error) => {
+        alert("Por favor activa el GPS para poder certificar la foto.");
+        document.getElementById("status").innerText = "Error: GPS necesario.";
     });
-
-    document.getElementById("status").innerText = "Evidencia registrada: " + folio;
 };
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js')
-    .then(() => console.log("Service Worker registrado correctamente"))
-    .catch(err => console.log("Error al registrar SW", err));
-}
