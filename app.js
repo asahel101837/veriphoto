@@ -17,23 +17,36 @@ let selectedFile;
 let coordsActuales = null;
 const statusTxt = document.getElementById("status");
 
-// GPS Directo
-if ("geolocation" in navigator) {
-    navigator.geolocation.getCurrentPosition((pos) => {
-        coordsActuales = pos.coords;
-        statusTxt.innerText = "GPS Conectado ✅";
-    }, (err) => {
-        statusTxt.innerText = "Error: Activa ubicación";
-    });
+// Función GPS vinculada a Window para que el HTML la vea
+window.activarGPS = function() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            coordsActuales = pos.coords;
+            statusTxt.innerText = "GPS Conectado ✅";
+            statusTxt.style.color = "green";
+        }, (err) => {
+            statusTxt.innerText = "⚠️ Error: Activa la ubicación";
+            statusTxt.style.color = "red";
+        }, { enableHighAccuracy: true });
+    }
 }
+activarGPS();
 
+// Manejo de la cámara
 document.getElementById("cameraInput").addEventListener("change", (e) => {
-    selectedFile = e.target.files[0];
-    statusTxt.innerText = "Foto lista para subir";
+    if (e.target.files[0]) {
+        selectedFile = e.target.files[0];
+        statusTxt.innerText = "Foto capturada 📸";
+        // MOSTRAR BOTÓN VERDE
+        document.getElementById("btnSubir").style.display = "block";
+    }
 });
 
+// Función Subida vinculada a Window
 window.subirEvidencia = async function() {
-    if(!selectedFile || !coordsActuales) return alert("Faltan datos");
+    if(!selectedFile || !coordsActuales) return alert("Faltan datos o GPS");
+
+    statusTxt.innerText = "Subiendo...";
 
     try {
         const folio = "VP-" + Date.now();
@@ -41,11 +54,14 @@ window.subirEvidencia = async function() {
             folio: folio,
             lat: coordsActuales.latitude,
             lon: coordsActuales.longitude,
-            fecha_servidor: serverTimestamp()
-            // (Aquí faltaban el hash y la compresión que agregamos después)
+            fecha_servidor: serverTimestamp(),
+            // Guardamos el nombre del archivo como prueba inicial
+            archivo: selectedFile.name 
         });
-        alert("¡Guardado! Folio: " + folio);
+        alert("¡Éxito! Folio generado: " + folio);
+        statusTxt.innerText = "Certificado enviado ✅";
     } catch (e) {
-        alert("Error de conexión");
+        console.error(e);
+        alert("Error al conectar con Firebase");
     }
 };
