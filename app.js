@@ -47,6 +47,8 @@ activarGPS(); // Se ejecuta al cargar, y también cuando picas el botón
 // --- 4. VALIDACIÓN DE CAPTURA (CÁMARA EN VIVO) ---
 document.getElementById("cameraInput").addEventListener("change", (e) => {
     const file = e.target.files[0];
+    if (!file) return; // Por si el usuario cancela
+
     const ahora = Date.now();
     const tiempoArchivo = file.lastModified;
     const desfase = (ahora - tiempoArchivo) / 1000;
@@ -56,9 +58,14 @@ document.getElementById("cameraInput").addEventListener("change", (e) => {
         alert("❌ ERROR: La foto no es reciente. Debes capturarla en vivo.");
         e.target.value = "";
         selectedFile = null;
+        document.getElementById("btnSubir").style.display = "none"; // Ocultar si falla
     } else {
         selectedFile = file;
         statusTxt.innerText = "Foto capturada y validada temporalmente.";
+        
+        // --- ESTA ES LA LÍNEA QUE DEBES AGREGAR ---
+        document.getElementById("btnSubir").style.display = "block"; 
+        // ------------------------------------------
     }
 });
 
