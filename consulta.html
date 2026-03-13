@@ -21,6 +21,9 @@
         
         .hash-text { font-family: 'Courier New', monospace; background: #f1f3f5; padding: 10px; border-radius: 8px; font-size: 0.8rem; border: 1px solid #dee2e6; }
         .badge-sincro { background-color: #d1e7dd; color: #0f5132; padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; }
+        
+        /* Estilo para el botón de copiar */
+        .btn-copy-custom { padding: 0.2rem 0.5rem; font-size: 0.75rem; transition: all 0.3s; }
     </style>
 </head>
 <body>
@@ -82,11 +85,16 @@
 
                             <div class="col-12"><div class="seccion-titulo">Geolocalización</div></div>
 
-                            <div class="col-7 dato-box">
+                            <div class="col-12 dato-box">
                                 <span class="dato-label">Coordenadas (Lat, Lon)</span>
-                                <span id="resGPS" class="dato-valor"></span>
+                                <div class="d-flex align-items-center">
+                                    <span id="resGPS" class="dato-valor"></span>
+                                    <button id="btnCopiar" class="btn btn-outline-secondary btn-copy-custom ms-2" title="Copiar coordenadas">
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-5 dato-box">
+                            <div class="col-12 dato-box">
                                 <span class="dato-label">Precisión</span>
                                 <span id="resPrecision" class="dato-valor"></span>
                             </div>
@@ -164,11 +172,29 @@
                 document.getElementById("resDesfase").innerText = `${data.desfase_segundos} segundos`;
                 
                 if (data.lat !== undefined && data.lon !== undefined) {
-                    document.getElementById("resGPS").innerText = `${data.lat.toFixed(6)}, ${data.lon.toFixed(6)}`;
+                    // Mostrar coordenadas con todos los decimales registrados
+                    const coordsTexto = `${data.lat}, ${data.lon}`;
+                    document.getElementById("resGPS").innerText = coordsTexto;
                     document.getElementById("resPrecision").innerText = `± ${Math.round(data.precision)}m`;
                     
-                    // URL Universal para Google Maps
+                    // URL corregida para Google Maps con precisión completa
                     document.getElementById("btnMaps").href = `https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lon}`;
+
+                    // Lógica del botón Copiar
+                    document.getElementById("btnCopiar").onclick = () => {
+                        navigator.clipboard.writeText(coordsTexto).then(() => {
+                            const btn = document.getElementById("btnCopiar");
+                            const icono = btn.querySelector("i");
+                            
+                            icono.classList.replace("bi-copy", "bi-check-lg");
+                            btn.classList.replace("btn-outline-secondary", "btn-success");
+                            
+                            setTimeout(() => {
+                                icono.classList.replace("bi-check-lg", "bi-copy");
+                                btn.classList.replace("btn-success", "btn-outline-secondary");
+                            }, 2000);
+                        });
+                    };
                 }
 
                 resultado.style.display = "block";
