@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar Evidencia | VeriPhoto Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+        .card { border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .result-card { display: none; }
+        .img-evidencia { width: 100%; border-radius: 15px; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .dato-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .dato-label { color: #6c757d; }
+        .dato-valor { font-weight: 600; color: #333; }
+        .badge-verificado { background-color: #d1e7dd; color: #0f5132; padding: 8px 15px; border-radius: 50px; font-weight: bold; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-6">
+            
+            <div class="text-center mb-4">
+                <h3 class="text-primary fw-bold"><i class="bi bi-shield-check"></i> VeriPhoto Pro</h3>
+                <p class="text-muted">Módulo de Verificación de Evidencias</p>
+            </div>
+
+            <div class="card p-4 mb-4">
+                <label class="form-label fw-bold">Ingrese el Folio de la Evidencia:</label>
+                <div class="input-group">
+                    <input type="text" id="inputFolio" class="form-control" placeholder="Ej: VP-1773374706517">
+                    <button class="btn btn-primary px-4" id="btnBuscar">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <div id="loader" class="text-center d-none mt-3">
+                    <div class="spinner-border spinner-border-sm text-primary"></div> Buscando en la nube...
+                </div>
+            </div>
+
+            <div id="resultado" class="card p-3 result-card">
+                <div class="text-center mb-3">
+                    <div class="badge-verificado mb-2">
+                        <i class="bi bi-patch-check-fill"></i> EVIDENCIA AUTÉNTICA
+                    </div>
+                    <div class="text-muted small">Folio Certificado:</div>
+                    <strong id="resFolio" class="text-dark"></strong>
+                </div>
+
+                <img id="resFoto" class="img-evidencia mb-3" alt="Foto de evidencia">
+
+                <div class="px-2">
+                    <div class="dato-item">
+                        <span class="dato-label">Fecha de Captura:</span>
+                        <span id="resFecha" class="dato-valor"></span>
+                    </div>
+                    <div class="dato-item">
+                        <span class="dato-label">Ubicación GPS:</span>
+                        <span id="resGPS" class="dato-valor"></span>
+                    </div>
+                    <div class="dato-item">
+                        <span class="dato-label">Desfase de Integridad:</span>
+                        <span id="resDesfase" class="dato-valor"></span>
+                    </div>
+                    <div class="dato-item">
+                        <span class="dato-label">Estado:</span>
+                        <span class="dato-valor text-success">VERIFICADO</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-light w-100 mt-4 border" onclick="location.reload()">
+                    <i class="bi bi-arrow-left"></i> Realizar otra consulta
+                </button>
+            </div>
+
+            <div id="errorMsg" class="alert alert-danger d-none text-center border-0 shadow-sm">
+                <i class="bi bi-exclamation-triangle-fill"></i> El folio no existe o es inválido.
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+    // Tu configuración (La misma que usas en app.js)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCDrXohcOJZcsMgqmvXakk4SJnaj7hgzDo",
+        authDomain: "veriphoto-2c95d.firebaseapp.com",
+        projectId: "veriphoto-2c95d",
+        storageBucket: "veriphoto-2c95d.firebasestorage.app",
+        messagingSenderId: "1005950289147",
+        appId: "1:1005950289147:web:a8fddbf7ab082f99335c5e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const btnBuscar = document.getElementById("btnBuscar");
+    const inputFolio = document.getElementById("inputFolio");
+    const loader = document.getElementById("loader");
+    const resultado = document.getElementById("resultado");
+    const errorMsg = document.getElementById("errorMsg");
+
+    btnBuscar.addEventListener("click", async () => {
+        const folioBusqueda = inputFolio.value.trim();
+        if (!folioBusqueda) return;
+
+        // Limpiar pantalla previa
+        resultado.style.display = "none";
+        errorMsg.classList.add("d-none");
+        loader.classList.remove("d-none");
+        btnBuscar.disabled = true;
+
+        try {
+            // Buscamos en la colección "evidencias" donde el campo "folio" coincida
+            const q = query(collection(db, "evidencias"), where("folio", "==", folioBusqueda));
+            const querySnapshot = await getDocs(q);
+
+            loader.classList.add("d-none");
+            btnBuscar.disabled = false;
+
+            if (querySnapshot.empty) {
+                errorMsg.classList.remove("d-none");
+                return;
+            }
+
+            // Llenar los datos con el primer documento encontrado
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                
+                document.getElementById("resFolio").innerText = data.folio;
+                document.getElementById("resFoto").src = data.foto; // Carga el Base64
+                document.getElementById("resFecha").innerText = new Date(data.exif_fecha).toLocaleString();
+                document.getElementById("resGPS").innerText = `${data.gps_lat.toFixed(5)}, ${data.gps_lon.toFixed(5)}`;
+                document.getElementById("resDesfase").innerText = (data.desfase_segundos || 0) + " segundos";
+
+                resultado.style.display = "block";
+            });
+
+        } catch (error) {
+            console.error(error);
+            loader.classList.add("d-none");
+            btnBuscar.disabled = false;
+            alert("Error al conectar con la base de datos de VeriPhoto.");
+        }
+    });
+
+    // Permitir buscar al presionar "Enter"
+    inputFolio.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") btnBuscar.click();
+    });
+</script>
+
+</body>
+</html>
