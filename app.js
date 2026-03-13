@@ -23,35 +23,35 @@ function activarGPS() {
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(
             (pos) => {
-                // Creamos un objeto personalizado para asegurar que el timestamp sea actual
                 coordsActuales = {
                     latitude: pos.coords.latitude,
                     longitude: pos.coords.longitude,
                     accuracy: pos.coords.accuracy,
-                    timestamp: Date.now() // <--- ESTO ES LA CLAVE
+                    timestamp: Date.now()
                 };
-
                 if (!mostrandoExito) {
                     statusTxt.innerHTML = `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`;
                     statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
                     btnPrincipal.disabled = false;
+                    btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
                 }
             },
             () => {
                 coordsActuales = null;
+                // Esto sobreescribe cualquier mensaje de "Sellando" si el GPS se apaga
                 statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Activa tu ubicación`;
                 statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
+                
+                // Deshabilitamos el botón hasta que vuelva el GPS
                 btnPrincipal.disabled = true;
+                btnPrincipal.innerHTML = `Esperando GPS...`;
+                mostrandoExito = false; // Resetear estado por si acaso
             },
-            { 
-                enableHighAccuracy: true, 
-                timeout: 10000, 
-                maximumAge: 0 
-            }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
 }
-
+activarGPS();
 
 // --- 4. PROCESAMIENTO Y VALIDACIÓN (FECHA EXIF + GPS NAVEGADOR) ---
 document.getElementById("cameraInput").addEventListener("change", async (e) => {
@@ -85,12 +85,28 @@ document.getElementById("cameraInput").addEventListener("change", async (e) => {
             throw new Error("FRAUDE DETECTADO: La hora de captura no coincide con la hora actual.");
         }
 
-        // --- 3. PREPARACIÓN DE SEGURIDAD (HASH Y OPTIMIZACIÓN) ---
-        statusTxt.innerText = "Sellando evidencia...";
-        const buffer = await file.arrayBuffer();
-        const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-        const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
+        // --- 3. PREPARACIÓN DE SEGURIDAD (OPTIMIZACIÓN Y LUEGO HASH) ---
+        statusTxt.innerText = "Procesando imagen...";
+        
+        // PRIMERO: Comprimimos la imagen para obtener el archivo FINAL
         const fotoBase64 = await procesarImagen(file);
+
+        // SEGUNDO: Preparamos la imagen comprimida para generar su Hash
+        // Extraemos solo los datos base64 (quitando el encabezado data:image/jpeg;base64,)
+        const base64Data = fotoBase64.split(',')[1];
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        statusTxt.innerText = "Sellando evidencia...";
+        
+        // TERCERO: Generamos el Hash sobre los bytes de la imagen ya comprimida
+        const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
+        const hash = Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, "0"))
+            .join("");
 
         // --- 4. SUBIDA A FIRESTORE ---
         const folio = "VP-" + Date.now();
@@ -124,18 +140,24 @@ document.getElementById("cameraInput").addEventListener("change", async (e) => {
         btnPrincipal.className = "btn btn-outline-primary w-100 mb-3";
 
     } catch (error) {
-        alert(`❌ ERROR DE CERTIFICACIÓN\n${error.message}`);
-        btnPrincipal.disabled = false;
+        // Si el error es por GPS, dejamos que activarGPS() maneje la interfaz
+        // Pero si es otro error (como el desfase de tiempo), mostramos la alerta
+        if (!coordsActuales) {
+            statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Ubicación perdida`;
+            statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
+            btnPrincipal.disabled = true;
+        } else {
+            alert(`❌ ERROR DE CERTIFICACIÓN\n${error.message}`);
+            statusTxt.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Reintente la captura`;
+            btnPrincipal.disabled = false;
+        }
+        
         btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> REINTENTAR`;
         e.target.value = "";
     }
 });
 
-
-
-// ================================================================
-
-// --- FUNCIONES TÉCNICAS (NO MODIFICAR) ---
+// --- FUNCIONES TÉCNICAS OPTIMIZADAS ---
 function obtenerExif(file) {
     return new Promise((resolve) => {
         EXIF.getData(file, function() {
@@ -147,19 +169,6 @@ function obtenerExif(file) {
 function parseExifDate(dateStr) {
     const parts = dateStr.split(/[: ]/);
     return new Date(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]);
-}
-
-function convertEXIFtoDecimal(coords, ref) {
-    let decimal = coords[0] + coords[1] / 60 + coords[2] / 3600;
-    return (ref === "S" || ref === "W") ? decimal * -1 : decimal;
-}
-
-function calcularDistancia(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 async function procesarImagen(file) {
