@@ -28,13 +28,14 @@
                 <h2 class="mb-4 text-primary"><i class="bi bi-shield-check"></i> VeriPhoto</h2>
                 
                 <div id="status" class="status-box bg-light text-muted">
-                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                    Buscando señal GPS...
-                </div>
+                  <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+    Inicializando sistemas de seguridad...
+</div>
+
 
                 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
                 
-                <button id="btnPrincipal" class="btn btn-primary w-100 shadow" onclick="document.getElementById('cameraInput').click()" disabled>
+                <button id="btnPrincipal" class="btn btn-primary w-100 shadow" onclick="activarSensores(); document.getElementById('cameraInput').click()" disabled>
                     <i class="bi bi-camera-fill me-2"></i> CAPTURAR Y CERTIFICAR
                 </button>
 
