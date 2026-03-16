@@ -220,7 +220,9 @@ document.getElementById("cameraInput").addEventListener("click", () => {
 document.getElementById("cameraInput").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) {
-        tomandoFoto = false; 
+        // Si no hay archivo, significa que canceló
+        e.target.value = ""; // Limpiamos el input inmediatamente
+        ejecutarBloqueoSeguridad("Captura cancelada o interrumpida");
         return;
     }
 
@@ -449,11 +451,10 @@ function ejecutarBloqueoSeguridad(motivo) {
 // Cuando el usuario regresa a la app desde la cámara
 window.addEventListener("focus", () => {
     if (tomandoFoto) {
-        // Damos un margen de 500ms para que el evento 'change' del input procese el archivo
+        // Aumentamos a 1500ms para dar tiempo a que el evento 'change' ocurra primero
         setTimeout(() => {
-            console.log("Regreso detectado: Cerrando ventana de permiso de cámara.");
+            console.log("Seguridad reactivada tras regreso de cámara.");
             tomandoFoto = false; 
-            // A partir de este milisegundo, cualquier salida activará el bloqueo
-        }, 500);
+        }, 1500); 
     }
 });
