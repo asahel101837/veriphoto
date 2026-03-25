@@ -60,7 +60,23 @@ let gpsEsReciente = false;
 
 const statusTxt = document.getElementById("status");
 const btnPrincipal = document.getElementById("btnPrincipal");
+btnPrincipal.addEventListener("click", () => {
+  if (estadoUI === "gps") {
+    const input = document.getElementById("cameraInput");
 
+// 🔥 BLOQUEO CRÍTICO
+btnPrincipal.disabled = true;
+estadoUI = "procesando";
+
+input.value = "";
+input.click();
+  }
+});
+btnPrincipal.addEventListener("click", () => {
+  if (estadoUI === "exito") {
+    window.location.reload();
+  }
+});
 // --- 1. SENSORES DE MOVIMIENTO ---
 async function activarSensores() {
 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -218,8 +234,8 @@ timestamp: Date.now()
       );
 
       btnPrincipal.disabled = false;
-      btnPrincipal.className = "btn btn-primary w-100 shadow";
-      btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+btnPrincipal.className = "btn btn-primary w-100 shadow";
+btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
   } else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
         actualizarUI(  
             "gps",  
@@ -254,16 +270,14 @@ if (esIOS) {
   // Modo iPhone → esperar interacción real
   btnPrincipal.disabled = false;
   btnPrincipal.innerHTML = "Activar sensores y ubicación";
-
-  btnPrincipal.onclick = async () => {
+  btnPrincipal.addEventListener("click", () => {
+  if (estadoUI === "inicial") {
     btnPrincipal.disabled = true;
     btnPrincipal.innerHTML = "Activando...";
-
     activarGPS();
-    await activarSensores();
-
-    btnPrincipal.innerHTML = "Permisos activados";
-  };
+    activarSensores();
+  }
+});
 
 } else {
   // Android (sin cambios)
@@ -476,10 +490,6 @@ btnPrincipal.disabled = false;
 btnPrincipal.style.backgroundColor = "#0d6efd"; // El azul original de tu botón
 btnPrincipal.style.borderColor = "#0d6efd";
 btnPrincipal.innerHTML = `FINALIZAR`; 
-
-// Cambiamos el comportamiento del botón para que reinicie la app
-btnPrincipal.onclick = () => { window.location.reload(); };
-
 } catch (error) {
 if (error.message.includes("LÍMITE")) {
 alert(error.message);
