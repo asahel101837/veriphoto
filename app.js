@@ -249,152 +249,106 @@ statusTxt.innerText = "GPS no soportado en este navegador";
 }
 }
 
+// --- INICIALIZACIÓN (ÚLTIMO BLOQUE DEL ARCHIVO) ---
 if (esIOS) {
-    // Estado para controlar el flujo de permisos
-    let pasoActual = 1; 
+    // iOS: Pasos secuenciales para permisos
+    let pasoActual = 1;
     
     btnPrincipal.disabled = false;
     btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> PASO 1: ACTIVAR SENSORES`;
     
-    // Manejador único para el botón
     btnPrincipal.onclick = async () => {
         if (pasoActual === 1) {
-            // PASO 1: Solicitar permiso de sensores
+            // PASO 1: Sensores
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 try {
-                    // Solicitamos permiso
                     const permisoSensor = await DeviceMotionEvent.requestPermission();
                     
                     if (permisoSensor === 'granted') {
-                        iniciarEscuchaMovimiento(); // Inicia la escucha
+                        iniciarEscuchaMovimiento();
                         
-                        // Inmediatamente, sin esperar otro clic, solicitamos GPS
-                        // Esto es crucial: hacerlo en el mismo flujo de ejecución
-                        if ("geolocation" in navigator) {
-                            // Mostramos un mensaje temporal al usuario
-                            statusTxt.innerHTML = `<i class="bi bi-gear-wide-connected"></i> Sensores listos. Solicitando ubicación...`;
-                            statusTxt.className = "status-box bg-info-subtle text-info border border-info-subtle";
-                            
-                            // Solicitamos GPS INMEDIATAMENTE
-                            navigator.geolocation.getCurrentPosition(
-                                (pos) => {
-                                    // Éxito en GPS
-                                    coordsActuales = {
-                                        latitude: pos.coords.latitude,
-                                        longitude: pos.coords.longitude,
-                                        accuracy: pos.coords.accuracy,
-                                        timestamp: Date.now()
-                                    };
-                                    
-                                    // Ambos permisos concedidos
-                                    pasoActual = 3; // Estado final
-                                    btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-                                    btnPrincipal.disabled = false;
-                                    
-                                    // Iniciar la escucha continua de GPS
-                                    activarGPS(); 
-                                    
-                                    // Restaurar el handler original para la captura
-                                    btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
-                                    
-                                    statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
-                                    statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
-                                },
-                                (error) => {
-                                    // Error en GPS
-                                    alert("Permiso de ubicación denegado o error. Necesario para la certificación.");
-                                    pasoActual = 2; // Volver a intentar GPS
-                                    btnPrincipal.innerHTML = `<i class="bi bi-geo-alt-fill"></i> REINTENTAR UBICACIÓN`;
-                                    btnPrincipal.disabled = false;
-                                    // El onclick se mantendrá igual para reintentar
-                                },
-                                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                            );
-                        } else {
-                            alert("Geolocalización no soportada en este dispositivo.");
-                            pasoActual = 2;
-                            btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ERROR`;
-                        }
+                        // Inmediatamente solicitar GPS (mismo contexto de clic)
+                        statusTxt.innerHTML = `<i class="bi bi-gear-wide-connected"></i> Sensores OK. Buscando ubicación...`;
+                        btnPrincipal.disabled = true;
+                        
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                coordsActuales = {
+                                    latitude: pos.coords.latitude,
+                                    longitude: pos.coords.longitude,
+                                    accuracy: pos.coords.accuracy,
+                                    timestamp: Date.now()
+                                };
+                                
+                                pasoActual = 3;
+                                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+                                btnPrincipal.disabled = false;
+                                activarGPS();
+                                btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
+                                statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
+                                statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
+                            },
+                            (error) => {
+                                console.error("GPS Error:", error.code, error.message);
+                                if (error.code === error.PERMISSION_DENIED) {
+                                    alert("Permiso de ubicación denegado. Verifica Ajustes > Safari > Ubicación.");
+                                    pasoActual = 1;
+                                    btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> REVISAR PERMISOS`;
+                                } else {
+                                    alert("Error de ubicación. Reintentar?");
+                                    pasoActual = 2;
+                                    btnPrincipal.innerHTML = `<i class="bi bi-geo-alt-fill"></i> REINTENTAR GPS`;
+                                }
+                            },
+                            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                        );
                     } else {
-                        // Permiso de sensores denegado
-                        alert("Permiso de sensores denegado. Necesario para la certificación.");
-                        pasoActual = 1; // Reiniciar
+                        alert("Permiso de sensores denegado.");
+                        pasoActual = 1;
                         btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> REINTENTAR SENSORES`;
                     }
                 } catch (e) {
                     console.error(e);
-                    alert("Error al solicitar permisos de sensores.");
+                    alert("Error en sensores.");
                     pasoActual = 1;
                     btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> REINTENTAR SENSORES`;
                 }
             } else {
-                // Fallback para versiones muy viejas
+                // Fallback iOS antiguo
                 iniciarEscuchaMovimiento();
-                // Intentar GPS inmediatamente
-                if ("geolocation" in navigator) {
-                    statusTxt.innerHTML = `<i class="bi bi-gear-wide-connected"></i> Sensores listos. Solicitando ubicación...`;
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => {
-                            coordsActuales = {
-                                latitude: pos.coords.latitude,
-                                longitude: pos.coords.longitude,
-                                accuracy: pos.coords.accuracy,
-                                timestamp: Date.now()
-                            };
-                            pasoActual = 3;
-                            btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-                            btnPrincipal.disabled = false;
-                            activarGPS();
-                            btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
-                            statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
-                            statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
-                        },
-                        (error) => {
-                            alert("Permiso de ubicación denegado o error.");
-                            pasoActual = 2;
-                            btnPrincipal.innerHTML = `<i class="bi bi-geo-alt-fill"></i> REINTENTAR UBICACIÓN`;
-                        },
-                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                    );
-                } else {
-                    alert("Geolocalización no soportada.");
-                    pasoActual = 2;
-                    btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ERROR`;
-                }
+                activarGPS();
+                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+                btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
             }
         } else if (pasoActual === 2) {
-            // REINTENTO DE GPS (si falló el primer intento)
-            if ("geolocation" in navigator) {
-                statusTxt.innerHTML = `<i class="bi bi-gear-wide-connected"></i> Reintentando ubicación...`;
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        coordsActuales = {
-                            latitude: pos.coords.latitude,
-                            longitude: pos.coords.longitude,
-                            accuracy: pos.coords.accuracy,
-                            timestamp: Date.now()
-                        };
-                        pasoActual = 3;
-                        btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-                        btnPrincipal.disabled = false;
-                        activarGPS();
-                        btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
-                        statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
-                        statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
-                    },
-                    (error) => {
-                        alert("Permiso de ubicación denegado nuevamente.");
-                        btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ERROR FINAL`;
-                        btnPrincipal.disabled = true;
-                    },
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                );
-            }
+            // REINTENTO GPS
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    coordsActuales = {
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy,
+                        timestamp: Date.now()
+                    };
+                    pasoActual = 3;
+                    btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+                    btnPrincipal.disabled = false;
+                    activarGPS();
+                    btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
+                    statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
+                    statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
+                },
+                (error) => {
+                    alert("No se pudo obtener ubicación. Verifica GPS.");
+                    btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ERROR`;
+                    btnPrincipal.disabled = true;
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
         }
-        // Si pasoActual es 3, el onclick ya fue cambiado a la captura
     };
 } else {
-    // Android y iOS modernos
+    // ANDROID: Sin cambios (tu código original funciona)
     activarGPS();
     activarSensores();
 }
