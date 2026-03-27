@@ -344,7 +344,7 @@
                     const precision = data.precision_gps || data.precision || 0;
                     document.getElementById("resPrecision").innerText = `± ${Math.round(precision)} metros`;
                     
-                    document.getElementById("btnMaps").href = `https://www.google.com/maps/search/?api=1&query=$${data.lat},$${data.lon}`;
+                    document.getElementById("btnMaps").href = `https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lon}`;
 
                     // Botón Copiar
                     document.getElementById("btnCopiar").onclick = () => {
