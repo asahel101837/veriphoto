@@ -564,18 +564,35 @@ if (esIOS) {
                 } catch (e) { alert("Error en sensores"); }
             }
         } 
-        // --- PASO 2: UBICACIÓN ---
-        else if (pasoPermisos === 2) {
-            // Este segundo clic "limpia" la intención para el GPS
-            btnPrincipal.disabled = true;
-            btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> BUSCANDO GPS...`;
+        // --- PASO 2: UBICACIÓN (Optimizado para iPhone 15) ---
+else if (pasoPermisos === 2) {
+    // 1. NO deshabilitamos el botón todavía para no romper el vínculo de confianza
+    btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> SOLICITANDO...`;
+
+    // 2. Usamos getCurrentPosition PRIMERO (es el que despierta el diálogo en iOS nuevos)
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            // Éxito: El usuario aceptó. Ahora sí activamos el rastreo constante
+            coordsActuales = {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                timestamp: Date.now()
+            };
             
-            // Llamamos a tu función global que ya tiene watchPosition
-            activarGPS(); 
+            statusTxt.innerHTML = `<i class="bi bi-geo-alt-fill text-success"></i> GPS Conectado.`;
+            activarGPS(); // Ahora watchPosition funcionará sin problemas
             
-            // Nota: activarGPS() se encargará de habilitar el botón de "CAPTURA" 
-            // y cambiar el onclick a la cámara cuando reciba la señal.
-        }
+            // El botón se actualizará a "CÁMARA" automáticamente dentro de activarGPS()
+        },
+        (err) => {
+            alert("Error: Debes permitir la ubicación para certificar.");
+            btnPrincipal.innerHTML = `<i class="bi bi-geo-alt"></i> REINTENTAR PASO 2`;
+            // Dejamos el botón habilitado para que pueda reintentar
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
     };
 } else {
     // ANDROID: Sin restricciones, activamos todo de golpe
