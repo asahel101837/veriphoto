@@ -346,7 +346,7 @@
                     document.getElementById("resGPS").innerText = coordsTexto;
                     
                     const precision = data.precision_gps || data.precision || 0;
-                    document.getElementById("resPrecision").innerText = `± ${Math.round(precision)} metros`;
+                    document.getElementById("resPrecision").innerText = `± ${precision.toFixed(2)} metros`;
                     
                     document.getElementById("btnMaps").href = `https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lon}`;
 
