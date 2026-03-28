@@ -180,7 +180,7 @@ metricaEnergia = energia;
 metricaVariacionG = variacionGyro;
 
 // 3. Umbrales de Seguridad  
-if (flatness > 0.35 && energia > 1.2 && resGyro > 0.8) {  
+if (flatness > 0.5 && energia > 10 && resGyro > 0.8) {  
 verificadoPorAgite = true;  
   
 // Bloqueamos la UI con el estado "verificado"  
