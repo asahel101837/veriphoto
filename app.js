@@ -324,149 +324,132 @@ btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span>
 // ... dentro del listener de cameraInput ...
 
 try {
-    // 1. BLOQUEO ATÓMICO
-    btnPrincipal.disabled = true;
-    mostrandoExito = true; 
-    btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> CERTIFICANDO...`;
-    statusTxt.innerText = "Verificando sensores físicos...";
-    statusTxt.className = "status-box bg-info-subtle text-info border border-info-subtle";
+// 1. BLOQUEO ATÓMICO (Tu código actual)
+btnPrincipal.disabled = true;
+mostrandoExito = true;
+// ... resto del proceso
 
-    // 2. VALIDACIONES LOCALES (Siguen siendo necesarias antes de enviar)
-    await checarIntegridadHardware();
-    const exifData = await obtenerExif(file);
-    
-    const horaDispositivo = new Date();
-    const horaFoto = exifData.DateTime ? parseExifDate(exifData.DateTime) : new Date(file.lastModified);
-    const desfaseTiempo = Math.abs((horaDispositivo - horaFoto) / 1000);
+// 1. BLOQUEO ATÓMICO: Nadie puede tocar el botón hasta que termine todo el ciclo  
+btnPrincipal.disabled = true;  
+mostrandoExito = true; // <--- AGREGAMOS ESTO AQUÍ para silenciar al GPS de inmediato  
+btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Certificando...`;  
 
-    if (desfaseTiempo > 120) {
-        throw new Error("FRAUDE TEMPORAL: La foto no es reciente.");
-    }
+statusTxt.innerText = "Verificando sensores físicos...";  
+await checarIntegridadHardware();  
+const exifData = await obtenerExif(file);  
+// Extracción de parámetros  
+const horaDispositivo = new Date();  
+const horaFoto = exifData.DateTime ? parseExifDate(exifData.DateTime) : new Date(file.lastModified);  
+const desfaseTiempo = Math.abs((horaDispositivo - horaFoto) / 1000);  
+  
+if (desfaseTiempo > 120) {  
+    throw new Error("FRAUDE TEMPORAL: La foto no es reciente.");  
+}  
+statusTxt.innerText = "Sellando evidencia...";  
+const fotoBase64 = await procesarImagen(file);  
+  
+const base64Data = fotoBase64.split(',')[1];  
+const binaryString = atob(base64Data);  
+const bytes = new Uint8Array(binaryString.length);  
+for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }  
+  
+const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);  
+const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");  
+  
+verificarLimiteCertificaciones();  
+const folio = "VP-" + Date.now();  
+// Guardar en Firestore con TODA la evidencia técnica
 
-    statusTxt.innerText = "Sellando evidencia...";
-    const fotoBase64 = await procesarImagen(file);
+await addDoc(collection(db, "evidencias"), {
+folio: folio,
+hash: hash,
+foto: fotoBase64,
 
-    const base64Data = fotoBase64.split(',')[1];
-    const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) { bytes[i] = binaryString.charCodeAt(i); }
+// Datos Geográficos  
+lat: coordsActuales.latitude,  
+lon: coordsActuales.longitude,  
+precision_gps: coordsActuales.accuracy,  
+  
+// Metadatos de la Cámara (EXIF)  
+exif_fecha: horaFoto.toISOString(),  
+  
+// Pruebas de Integridad Temporal  
+fecha_celular: horaDispositivo.toISOString(),  
+fecha_servidor: serverTimestamp(),  
+desfase_segundos: Math.round(desfaseTiempo),  
+  
+// --- NUEVOS: PRUEBAS DE INTEGRIDAD FÍSICA ---  
+atestacion_hardware: {  
+    flatness_caos: metricaFlatness,      // Prueba de agite humano (entropía)  
+    energia_dinamica: metricaEnergia,    // Intensidad del movimiento  
+    variacion_giroscopio: metricaVariacionG, // Prueba de rotación real  
+    muestras_analizadas: 64,  
+    intervalo_ms: 20  
+},  
+// Información del Dispositivo  
+hw_verificado: true
 
-    // 🔥 1. OBTENER CHALLENGE (ANTES DE TODO)
-const challengeRes = await fetch("https://veriphoto-guardia.vercel.app/api/challenge");
-const challengeData = await challengeRes.json();
+});
+// --- MANEJO DE ÉXITO Y RESET CONTROLADO ---
+certificacionesMemoria.push(Date.now());
+guardarDatos();
+registrarLog("certificacion");
+// Primero: Aseguramos que el botón sea INCLICABLE visualmente
+btnPrincipal.disabled = true;
+btnPrincipal.innerHTML = `<i class="bi bi-shield-check"></i> GUARDADO CON ÉXITO`;
 
-const nonce = challengeData.nonce;
-const timestamp = challengeData.timestamp;
-const firma = challengeData.firma;
+// Segundo: Reseteamos seguridad interna (Limpieza Pro)  
+verificadoPorAgite = false;  
+sensorActivo = false;  
+lecturasAccel = []; // Antes decía lecturasAgite  
+lecturasGyro = [];  // Añadimos esta  
+ultimoRegistro = 0;  
+analizando = false; // Aseguramos que el semáforo se libere  
+metricaFlatness = 0;  
+metricaEnergia = 0;  
+metricaVariacionG = 0;
 
-// 🔥 2. GENERAR HASH CON NONCE
-const encoder = new TextEncoder();
-
-const dataToHash = encoder.encode(
-    base64Data +
-    nonce +
-    coordsActuales.latitude +
-    coordsActuales.longitude
+// Al final del try en cameraInput:
+actualizarUI(
+"exito",
+`FOTO CERTIFICADA <br><div class="d-flex align-items-center justify-content-center gap-2">
+    <code class="fs-5 text-white" id="folioDisplay">${folio}</code>
+    <button id="btnCopiarFolio" class="btn btn-outline-light btn-sm" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" title="Copiar folio">
+        <i class="bi bi-copy"></i>
+    </button>
+</div>`,
+"bg-success text-white px-2 shadow-sm"
 );
 
-const hashBuffer = await crypto.subtle.digest("SHA-256", dataToHash);
-const hash = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
+// CORRECCIÓN: Quitamos las comillas dobles para que use la variable real
+const btnCopiar = document.getElementById("btnCopiarFolio");
+const folioTexto = folio; // Aquí quitamos las "${ }" para que tome el valor real del folio
 
-// 🔥 3. VALIDACIONES
-verificarLimiteCertificaciones();
+btnCopiar.onclick = () => {
+    navigator.clipboard.writeText(folioTexto).then(() => {
+        const icono = btnCopiar.querySelector("i");
+        
+        icono.classList.replace("bi-copy", "bi-check-lg");
+        btnCopiar.classList.replace("btn-outline-light", "btn-success");
+        
+        setTimeout(() => {
+            icono.classList.replace("bi-check-lg", "bi-copy");
+            btnCopiar.classList.replace("btn-success", "btn-outline-light");
+        }, 2000);
+    }).catch(err => {
+        console.error('Error al copiar: ', err);
+    });
+};
 
-const validationUrl = "https://veriphoto-guardia.vercel.app/api/validate";
+btnPrincipal.disabled = false;
+btnPrincipal.style.backgroundColor = "#0d6efd"; // El azul original de tu botón
+btnPrincipal.style.borderColor = "#0d6efd";
+btnPrincipal.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> FINALIZAR`;
 
-// 🔥 4. ENVIAR AL BACKEND
-const response = await fetch(validationUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        nonce,
-        timestamp,
-        firma,
-        hash,
-        foto: fotoBase64,
-        lat: coordsActuales.latitude,
-        lon: coordsActuales.longitude,
-        precision_gps: coordsActuales.accuracy,
-        exif_fecha: horaFoto.toISOString(),
-        fecha_celular: horaDispositivo.toISOString(),
-        desfase_segundos: Math.round(desfaseTiempo),
-        atestacion_hardware: {
-            flatness_caos: metricaFlatness,
-            energia_dinamica: metricaEnergia,
-            variacion_giroscopio: metricaVariacionG,
-            muestras_analizadas: 64,
-            intervalo_ms: 20
-        }
-    })
-});
 
-    const result = await response.json();
 
-    if (!response.ok) {
-        console.error("❌ Error Vercel:", result);
-        throw new Error(result.error || "Validación fallida en servidor");
-    }
-
-    // 4. ÉXITO: Vercel ya guardó en Firebase
-    console.log("✅ Éxito! Folio:", result.folio);
-    
-    // Actualizar UI
-    btnPrincipal.innerHTML = `<i class="bi bi-shield-check"></i> GUARDADO CON ÉXITO`;
-    statusTxt.innerText = "Certificación completada correctamente";
-    statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
-
-    actualizarUI(
-        "exito",
-        `FOTO CERTIFICADA <br><div class="d-flex align-items-center justify-content-center gap-2">
-            <code class="fs-5 text-white" id="folioDisplay">${result.folio}</code>
-            <button id="btnCopiarFolio" class="btn btn-outline-light btn-sm" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" title="Copiar folio">
-                <i class="bi bi-copy"></i>
-            </button>
-        </div>`,
-        "bg-success text-white px-2 shadow-sm"
-    );
-
-    // Botón copiar
-    const btnCopiar = document.getElementById("btnCopiarFolio");
-    if (btnCopiar) {
-        btnCopiar.onclick = () => {
-            navigator.clipboard.writeText(result.folio).then(() => {
-                const icono = btnCopiar.querySelector("i");
-                icono.classList.replace("bi-copy", "bi-check-lg");
-                btnCopiar.classList.replace("btn-outline-light", "btn-success");
-                setTimeout(() => {
-                    icono.classList.replace("bi-check-lg", "bi-copy");
-                    btnCopiar.classList.replace("btn-success", "btn-outline-light");
-                }, 2000);
-            }).catch(err => console.error('Error al copiar:', err));
-        };
-    }
-
-    // Resetear
-    certificacionesMemoria.push(Date.now());
-    guardarDatos();
-    registrarLog("certificacion");
-
-    verificadoPorAgite = false;
-    sensorActivo = false;
-    lecturasAccel = [];
-    lecturasGyro = [];
-    ultimoRegistro = 0;
-    analizando = false;
-    metricaFlatness = 0;
-    metricaEnergia = 0;
-    metricaVariacionG = 0;
-
-    btnPrincipal.disabled = false;
-    btnPrincipal.style.backgroundColor = "#0d6efd";
-    btnPrincipal.style.borderColor = "#0d6efd";
-    btnPrincipal.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> FINALIZAR`;
-    btnPrincipal.onclick = () => { window.location.reload(); };
+// Cambiamos el comportamiento del botón para que reinicie la app
+btnPrincipal.onclick = () => { window.location.reload(); };
 
 } catch (error) {
 if (error.message.includes("LÍMITE")) {
