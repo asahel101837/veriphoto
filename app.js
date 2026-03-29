@@ -378,8 +378,13 @@ if (!response.ok) {
     }
 
     if (mensajeError.includes("Límite") || mensajeError.includes("Actividad")) {
-        // AQUÍ REAPARECE EL ALERT
-        alert(`⚠️ ${mensajeError}\n\nPodrás certificar de nuevo en ${segundosFaltantes} segundos.`);
+const toastLive = document.getElementById('liveToast');
+const toastMsg = document.getElementById('toastMsg');
+const toast = new bootstrap.Toast(toastLive);
+
+toastMsg.innerText = `⚠️ ${mensajeError}. Reintenta en ${segundosFaltantes}s.`;
+toast.show();
+
 
         statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${mensajeError}`;
         statusTxt.className = "status-box bg-warning text-dark";
