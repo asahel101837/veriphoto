@@ -307,20 +307,14 @@ const response = await fetch(validationUrl, {
         }
     })
 });
+// 1. LEEMOS EL JSON DE LA RESPUESTA (Solo una vez)
+const result = await response.json();
 
-if (!respuesta.ok) {
-    // ESTA ES LA CLAVE: Capturamos el JSON del error
-    const errorData = await respuesta.json();
-    // Lanzamos un error que contenga el JSON como texto
-    throw new Error(JSON.stringify(errorData));
+// 2. SI EL SERVIDOR RESPONDIÓ CON ERROR (429 de límite, etc.)
+if (!response.ok) {
+    // IMPORTANTE: Lanzamos el objeto completo como texto para el catch
+    throw new Error(JSON.stringify(result));
 }
-
-    const result = await response.json();
-    if (!response.ok) {
-        console.error("❌ Error Vercel:", result);
-        throw new Error(result.error || "Validación fallida en servidor");
-    }
-
     console.log("✅ Éxito! Folio:", result.folio);
     btnPrincipal.innerHTML = `<i class="bi bi-shield-check"></i> GUARDADO CON ÉXITO`;
     statusTxt.innerText = "Certificación completada correctamente";
