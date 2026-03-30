@@ -48,7 +48,6 @@ let analizando = false;
 let estadoUI = "inicial";
 let tiempoLecturaConcluido = false;
 let gpsEsReciente = false;
-let bloqueoPorErrorLimite = false;
 
 const statusTxt = document.getElementById("status");
 const btnPrincipal = document.getElementById("btnPrincipal");
@@ -171,37 +170,30 @@ if (tiempoLecturaConcluido && !gpsEsReciente) {
 gpsEsReciente = true; 
 estadoUI = "gps";
 
- // Solo actualiza la UI del GPS si NO hay un bloqueo por límite de tiempo
-if (!bloqueoPorErrorLimite) {
-    ActualizarUI(  
-        "gps",  
-        `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
-        "bg-success-subtle text-success border border-success-subtle"  
-    );
-}
+actualizarUI(  
+            "gps",  
+            `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
+            "bg-success-subtle text-success border border-success-subtle"  
+        );  
         btnPrincipal.disabled = false;  
         btnPrincipal.className = "btn btn-primary w-100 shadow";  
         btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`; 
         btnPrincipal.onclick = () => document.getElementById('cameraInput').click(); 
     } 
     else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
-      if (!bloqueoPorErrorLimite) {
-        ActualizarUI(  
-        "gps",  
-        `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
-        "bg-success-subtle text-success border border-success-subtle"  
-        );
-      }
+        actualizarUI(  
+            "gps",  
+            `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
+            "bg-success-subtle text-success border border-success-subtle"  
+        );  
     }  
         }, (error) => {  
 coordsActuales = null;  
-if (!bloqueoPorErrorLimite) {
-  actualizarUI(  
+actualizarUI(  
     "error",   
     `<i class="bi bi-geo-off"></i> Error: Activa tu ubicación`,   
     "bg-danger-subtle text-danger border border-danger-subtle"  
-    );
-}
+);  
 btnPrincipal.disabled = true;  
 btnPrincipal.innerHTML = `Esperando GPS...`;  
 console.warn("Error de Geolocalización:", error.message);
@@ -393,9 +385,7 @@ const toast = new bootstrap.Toast(toastLive);
 toastMsg.innerHTML = `⚠️ ${mensajeError}.<br>Reintenta en <b>${segundosFaltantes}s</b>.`;
 toast.show();
 
-        bloqueoPorErrorLimite = true;
-        statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${mensajeError}`;
-        statusTxt.className = "status-box bg-warning text-dark";
+        
 
         // CUENTA REGRESIVA CON TIEMPO REAL
         let restante = segundosFaltantes;
@@ -403,26 +393,12 @@ toast.show();
 
         const cuentaRegresiva = setInterval(() => {
             if (restante <= 0) {
-    clearInterval(cuentaRegresiva);
-
-    // 1. Cambiamos el mensaje a "Listo" inmediatamente
-    ActualizarUI(
-        "gps", 
-        `<i class="bi bi-check-circle-fill"></i> ¡Listo! Ya puedes reintentar`, 
-        "bg-success text-white border-success"
-    );
-
-    // 2. Activamos el botón
-    btnPrincipal.disabled = false;
-    btnPrincipal.innerHTML = `<i class="bi bi-camera"></i> CAPTURAR Y CERTIFICAR`;
-    btnPrincipal.blur();
-
-    // 3. ESPERAMOS 3 SEGUNDOS ANTES DE DEVOLVERLE EL CONTROL AL GPS
-    setTimeout(() => {
-        bloqueoPorErrorLimite = false; 
-        // Aquí el GPS ya podrá "aplastar" el mensaje de listo con la ubicación real
-    }, 3000); 
-} else {
+                clearInterval(cuentaRegresiva);
+                btnPrincipal.disabled = false;
+                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+                statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para reintentar`;
+                statusTxt.className = "status-box bg-success-subtle text-success";
+            } else {
                 btnPrincipal.innerHTML = `<i class="bi bi-hourglass-split"></i> ESPERA ${restante}s...`;
                 restante--;
             }
