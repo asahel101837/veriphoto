@@ -382,8 +382,7 @@ const toastLive = document.getElementById('liveToast');
 const toastMsg = document.getElementById('toastMsg');
 const toast = new bootstrap.Toast(toastLive);
 
-toastMsg.innerText = `⚠️ ${mensajeError}. <br>Reintenta en ${segundosFaltantes}s.`;
-toast.show();
+toastMsg.innerHTML = `⚠️ ${mensajeError}.<br>Reintenta en <b>${segundosFaltantes}s</b>.`;
 
 
         statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${mensajeError}`;
