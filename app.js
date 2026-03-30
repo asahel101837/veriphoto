@@ -395,8 +395,10 @@ toast.show();
             if (restante <= 0) {
                 clearInterval(cuentaRegresiva);
                 btnPrincipal.disabled = false;
-                btnPrincipal.blur(); 
-                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CCAPTURAR Y CERTIFICAR`;
+                setTimeout(() => {
+                  btnPrincipal.blur();
+                }, 50);
+                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
             } else {
                 btnPrincipal.innerHTML = `<i class="bi bi-hourglass-split"></i> ESPERA ${restante}s...`;
                 restante--;
