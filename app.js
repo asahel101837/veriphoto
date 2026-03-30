@@ -385,8 +385,7 @@ const toast = new bootstrap.Toast(toastLive);
 toastMsg.innerHTML = `⚠️ ${mensajeError}.<br>Reintenta en <b>${segundosFaltantes}s</b>.`;
 toast.show();
 
-        statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${mensajeError}`;
-        statusTxt.className = "status-box bg-warning text-dark";
+        
 
         // CUENTA REGRESIVA CON TIEMPO REAL
         let restante = segundosFaltantes;
