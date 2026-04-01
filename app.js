@@ -544,31 +544,33 @@ resolve(canvas.toDataURL('image/jpeg', 0.7));
 }
 
 function actualizarUI(nuevoEstado, mensaje, clase) {
-    // 1. Prioridad Máxima: Estados finales (No se tocan por nada)
-    const estadosFinales = ["verificado", "procesando", "exito"];
+    // 1. PRIORIDAD ABSOLUTA: Si ya tuvimos éxito, NADIE más toca la pantalla.
+    // Este es el "muro" que evitará que el GPS débil borre tu folio.
+    if (estadoUI === "exito") {
+        return; 
+    }
+
+    // 2. Prioridad de Estados finales intermedios
+    const estadosFinales = ["verificado", "procesando"];
     if (estadosFinales.includes(estadoUI) && !estadosFinales.includes(nuevoEstado)) {  
         return;   
     }
 
-    // 2. Prioridad de Bloqueo: Si el GPS es malo, PROHIBIMOS cualquier otro mensaje
-    // que no sea una actualización del propio GPS débil.
+    // 3. Prioridad de Bloqueo: Si el GPS es malo, PROHIBIMOS cualquier otro mensaje
     if (estadoUI === "gps_debil" && nuevoEstado !== "gps_debil") {
-        // Solo permitimos salir de aquí si el nuevo estado es "gps" (que significa precisión < 30m)
         if (nuevoEstado !== "gps") {
             return; 
         }
     }
 
-    // 3. Prioridad de Instrucción: Si el GPS ya es bueno, pero falta el agite,
-    // mantenemos el mensaje de agite y bloqueamos que el GPS lo sobrescriba.
+    // 4. Prioridad de Instrucción: Si falta el agite, mantenemos ese mensaje
     if (nuevoEstado === "gps" && !verificadoPorAgite && sensorActivo) {
-        // Si ya estamos mostrando el mensaje de agite, no dejamos que el GPS lo quite
         if (estadoUI === "agitando") {
             return;
         }
     }
 
-    // 4. Aplicar el cambio si pasó todos los filtros
+    // Aplicar el cambio
     estadoUI = nuevoEstado;  
     statusTxt.className = `status-box ${clase}`;  
     statusTxt.innerHTML = mensaje;
