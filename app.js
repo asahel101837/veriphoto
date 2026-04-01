@@ -188,7 +188,7 @@ watchId = navigator.geolocation.watchPosition(
     };
 
     // 1. SI LA PRECISIÓN ES MALA (> 30m)
-    if (precision > 5) {
+    if (precision > 30) {
         gpsEsReciente = false;
         btnPrincipal.disabled = true; // Bloqueo de seguridad
         btnPrincipal.innerHTML = `<i class="bi bi-geo-fill"></i> BUSCANDO PRECISIÓN...`;
