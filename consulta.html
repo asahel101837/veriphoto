@@ -86,7 +86,6 @@
             transition: all 0.3s; 
         }
         
-        /* Badge de verificación */
         .badge-verified { 
             background-color: #0d6efd; 
             color: white; 
@@ -103,7 +102,6 @@
             font-size: 0.8rem;
         }
         
-        /* Responsive: En móvil, todo en una columna */
         @media (max-width: 768px) {
             .col-md-5 {
                 order: 1;
@@ -126,7 +124,6 @@
     <div class="row justify-content-center">
         <div class="col-12 col-md-10 col-lg-8">
             
-            <!-- Buscador -->
             <div class="card card-auditoria p-4 mb-4 text-center">
                 <h4 class="fw-bold mb-3"><i class="bi bi-shield-lock-fill text-primary"></i> Consultar Evidencia</h4>
                 <div class="input-group input-group-lg">
@@ -141,10 +138,9 @@
                 </div>
             </div>
 
-            <!-- Resultados -->
             <div id="resultado" class="card card-auditoria p-4 result-card">
                 <div class="row g-4">
-                    <!-- Columna Izquierda: Foto -->
+                  
                     <div class="col-12 col-md-5">
                         <div class="seccion-titulo">Evidencia Visual</div>
                         <div class="img-container">
@@ -155,17 +151,14 @@
                         </div>
                     </div>
 
-                    <!-- Columna Derecha: Metadatos -->
                     <div class="col-12 col-md-7">
                         <div class="seccion-titulo">Metadatos de Integridad</div>
                         
-                        <!-- Hash -->
                         <div class="dato-box">
                             <span class="dato-label">Firma Digital (Hash SHA-256)</span>
                             <div id="resHash" class="hash-text"></div>
                         </div>
 
-                        <!-- Trazabilidad Temporal -->
                         <div class="seccion-titulo mt-4">Trazabilidad Temporal</div>
                         
                         <div class="row g-3">
@@ -195,7 +188,6 @@
                             </div>
                         </div>
 
-                        <!-- 🔒 Integridad del Hardware -->
                         <div class="seccion-titulo mt-4">Verificación de Hardware</div>
                         
                         <div class="row g-3">
@@ -242,7 +234,6 @@
                             </div>
                         </div>
 
-                        <!-- 📍 Geolocalización (AHORA AL FINAL) -->
                         <div class="seccion-titulo mt-4">Geolocalización</div>
 
                         <div class="row g-3">
@@ -267,7 +258,6 @@
                     </div>
                 </div>
                 
-                <!-- Botón Maps: Justo después de Geolocalización -->
                 <div class="mt-4 pt-3 border-top">
                     <a id="btnMaps" href="#" target="_blank" class="btn btn-dark w-100 py-3">
                         <i class="bi bi-geo-alt-fill"></i> Ver en Google Maps
@@ -275,7 +265,6 @@
                 </div>
             </div>
 
-            <!-- Error -->
             <div id="errorMsg" class="alert alert-danger d-none text-center mt-3">
                 <i class="bi bi-exclamation-triangle-fill"></i> Folio no encontrado. Verifique que el código sea correcto.
             </div>
@@ -284,7 +273,6 @@
     </div>
 </div>
 
-<!-- Script (Necesario para que funcione la lógica) -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
@@ -330,17 +318,14 @@
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
                 
-                // Foto y Hash
                 document.getElementById("resFoto").src = data.foto;
-                document.getElementById("resHash").innerText = data.hash;
+                document.getElementById("resHash").innerText = data.hash_certificacion;
                 
-                // Fechas
                 document.getElementById("resExif").innerText = new Date(data.exif_fecha).toLocaleString();
                 document.getElementById("resCelular").innerText = new Date(data.fecha_celular).toLocaleString();
                 document.getElementById("resServidor").innerText = data.fecha_servidor ? new Date(data.fecha_servidor.seconds * 1000).toLocaleString() : "Pendiente";
                 document.getElementById("resDesfase").innerText = `${data.desfase_segundos} segundos`;
                 
-                // GPS
                 if (data.lat !== undefined && data.lon !== undefined) {
                     const coordsTexto = `${data.lat}, ${data.lon}`;
                     document.getElementById("resGPS").innerText = coordsTexto;
@@ -350,7 +335,6 @@
                     
                     document.getElementById("btnMaps").href = `https://www.google.com/maps/search/?api=1&query=${data.lat},${data.lon}`;
 
-                    // Botón Copiar
                     document.getElementById("btnCopiar").onclick = () => {
                         navigator.clipboard.writeText(coordsTexto).then(() => {
                             const btn = document.getElementById("btnCopiar");
@@ -367,11 +351,9 @@
                     };
                 }
 
-                // 🔒 Datos de Integridad de Hardware
                 if (data.atestacion_hardware) {
                     const hw = data.atestacion_hardware;
                     
-                    // Estado de verificación
                     const hwVerified = data.hw_verificado === true;
                     const badge = document.getElementById("resHWVerified");
                     if (hwVerified) {
@@ -382,14 +364,12 @@
                         badge.innerHTML = '<i class="bi bi-x-circle"></i> NO VERIFICADO';
                     }
                     
-                    // Métricas de agite
                     document.getElementById("resFlatness").innerText = hw.flatness_caos?.toFixed(4) || "N/A";
                     document.getElementById("resEnergia").innerText = hw.energia_dinamica?.toFixed(4) || "N/A";
                     document.getElementById("resVariacionG").innerText = hw.variacion_giroscopio?.toFixed(4) || "N/A";
                     document.getElementById("resMuestras").innerText = hw.muestras_analizadas || "N/A";
                     document.getElementById("resIntervalo").innerText = hw.intervalo_ms ? `${hw.intervalo_ms} ms` : "N/A";
                 } else {
-                    // Datos antiguos sin atestacion_hardware
                     document.getElementById("resHWVerified").innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-question-circle"></i> DATOS NO DISPONIBLES</span>';
                     document.getElementById("resFlatness").innerText = "N/A";
                     document.getElementById("resEnergia").innerText = "N/A";
