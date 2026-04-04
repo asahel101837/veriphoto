@@ -1,4 +1,4 @@
-const CACHE_NAME = 'veriphoto-v2';
+const CACHE_NAME = 'veriphoto-v3';
 const assets = [
   './',
   './index.html',
