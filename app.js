@@ -448,6 +448,7 @@ if (btnCopiar) {
                 icono.classList.replace("bi-check-lg", "bi-copy");
                 texto.innerText = "Copiar Folio";
                 btnCopiar.classList.replace("btn-warning", "btn-light");
+                 btnCopiar.blur(); 
             }, 2000);
         }).catch(err => console.error('Error al copiar:', err));
     };
